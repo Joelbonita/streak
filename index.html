@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Streak — Consistency Tracker</title>
+  <meta name="description" content="A simple, elegant mobile-first personal streak tracker.">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0B1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="STREAK">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232DD4BF'><circle cx='12' cy='12' r='10'/></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1 class="app-title">Streak</h1>
+      <p class="app-tagline">Build consistency.</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <section class="streak-hero" aria-label="Streak Details">
+        <span class="streak-subheading">Current Streak</span>
+        
+        <div class="streak-count-container">
+          <span id="streakCount" class="streak-count" aria-live="polite">0</span>
+        </div>
+
+        <span class="streak-unit">Days</span>
+
+        <!-- Streak Name & Edit Button -->
+        <button id="streakNameBtn" class="streak-name-btn" type="button" aria-label="Edit streak name">
+          <span id="streakNameText" class="streak-name-text">Learning C#</span>
+          <svg class="edit-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
+
+        <p id="streakMessage" class="streak-message">Keep going.</p>
+
+        <!-- Daily Check-In Button -->
+        <button id="checkInBtn" class="checkin-btn" type="button" aria-label="Check in for today">
+          <span id="checkInBtnText">Check In</span>
+        </button>
+
+        <!-- Current Week Activity Indicator -->
+        <section class="weekly-tracker" aria-label="Weekly Activity">
+          <div id="weeklyGrid" class="weekly-grid" role="list">
+            <!-- Populated via app.js -->
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- Footer Stats -->
+    <footer class="stats-footer" aria-label="All-time Statistics">
+      <div class="stat-item">
+        <span class="stat-label">Best streak</span>
+        <span id="bestStreakVal" class="stat-value">0 days</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Started</span>
+        <span id="startedDateVal" class="stat-value">—</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Custom Edit/Setup Modal -->
+  <div id="editModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-card">
+      <h2 id="modalTitle" class="modal-title">What are you streaking?</h2>
+      <p class="modal-hint">Name the habit or skill you are committing to.</p>
+
+      <form id="streakForm" class="modal-form" novalidate>
+        <div class="modal-input-wrapper">
+          <label for="streakInput" class="sr-only">Streak Name</label>
+          <input
+            type="text"
+            id="streakInput"
+            class="modal-input"
+            placeholder="e.g. Cybersecurity Study"
+            maxlength="40"
+            autocomplete="off"
+            required
+          />
+          <p id="modalError" class="modal-error" aria-live="polite"></p>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="modalCancelBtn" class="modal-btn btn-cancel">Cancel</button>
+          <button type="submit" id="modalSaveBtn" class="modal-btn btn-save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/Streak.js"></script>
+  <script src="js/StreakStorage.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then((reg) => {
+            console.log('ServiceWorker registered with scope:', reg.scope);
+          })
+          .catch((err) => {
+            console.log('ServiceWorker registration skipped or failed:', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

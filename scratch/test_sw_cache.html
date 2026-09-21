@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="status">Testing...</div>
+<script>
+async function run() {
+  const out = [];
+  try {
+    if (!('serviceWorker' in navigator)) {
+      out.push('FAIL: ServiceWorker not supported');
+      document.getElementById('status').innerText = out.join('\n');
+      return;
+    }
+    const reg = await navigator.serviceWorker.register('../service-worker.js');
+    out.push('PASS: ServiceWorker registered successfully');
+
+    // Wait briefly for install and activation
+    await new Promise(r => setTimeout(r, 1200));
+
+    const cacheNames = await caches.keys();
+    if (cacheNames.includes('streak-pwa-v1')) {
+      out.push('PASS: Cache streak-pwa-v1 found in CacheStorage');
+      const cache = await caches.open('streak-pwa-v1');
+      const keys = await cache.keys();
+      out.push(`PASS: Cache contains ${keys.length} cached resources`);
+    } else {
+      out.push(`FAIL: Cache streak-pwa-v1 not found. Existing: ${cacheNames.join(', ')}`);
+    }
+  } catch (e) {
+    out.push('FAIL: Error: ' + e.message);
+  }
+  document.getElementById('status').innerText = out.join('\n');
+}
+run();
+</script>
+</body>
+</html>
