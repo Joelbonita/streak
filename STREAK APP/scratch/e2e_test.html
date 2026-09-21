@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>E2E App Integration Test</title>
+</head>
+<body>
+  <h1>Running E2E Tests...</h1>
+  <div id="results"></div>
+
+  <!-- Embed index.html in an iframe to test real DOM lifecycle -->
+  <iframe id="appFrame" src="../index.html" width="400" height="750" style="border: 1px solid #ccc;"></iframe>
+
+  <script>
+    const results = [];
+    function assert(condition, message) {
+      if (condition) {
+        results.push({ pass: true, message });
+      } else {
+        results.push({ pass: false, message });
+        console.error('FAIL:', message);
+      }
+    }
+
+    const frame = document.getElementById('appFrame');
+
+    frame.onload = async () => {
+      try {
+        const frameWin = frame.contentWindow;
+        const frameDoc = frame.contentDocument;
+
+        // Reset storage for clean test
+        frameWin.localStorage.clear();
+
+        // Re-initialize app cleanly
+        frameWin.app = new frameWin.StreakApp();
+
+        // 1. Initial State
+        const modal = frameDoc.getElementById('editModal');
+        assert(modal.classList.contains('is-open'), 'Setup modal opens automatically on fresh load');
+
+        // 2. Empty Streak Name Validation
+        const form = frameDoc.getElementById('streakForm');
+        const input = frameDoc.getElementById('streakInput');
+        const error = frameDoc.getElementById('modalError');
+
+        input.value = '   ';
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        assert(error.classList.contains('visible'), 'Empty streak name shows error message');
+        assert(modal.classList.contains('is-open'), 'Modal stays open on invalid input');
+
+        // 3. Set Streak Name
+        input.value = 'Learning C#';
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        assert(!modal.classList.contains('is-open'), 'Modal closes after valid name submitted');
+
+        const streakName = frameDoc.getElementById('streakNameText');
+        assert(streakName.textContent === 'Learning C#', 'Streak name displayed correctly');
+
+        const streakCount = frameDoc.getElementById('streakCount');
+        assert(streakCount.textContent === '0', 'Initial streak count is 0');
+
+        const checkInBtn = frameDoc.getElementById('checkInBtn');
+        assert(!checkInBtn.disabled, 'Check In button is enabled initially');
+        assert(checkInBtn.textContent.includes('Check In'), 'Check In button text is "Check In"');
+
+        const weeklyDots = frameDoc.querySelectorAll('.weekly-dot');
+        assert(weeklyDots.length === 7, 'Seven weekly dots are rendered');
+
+        // 4. Perform Check-In
+        checkInBtn.click();
+        assert(streakCount.textContent === '1', 'Streak count updates to 1 upon check-in');
+        assert(checkInBtn.disabled, 'Check In button is disabled after checking in');
+        assert(checkInBtn.classList.contains('checked-in'), 'Check In button has checked-in class');
+        assert(checkInBtn.textContent.includes('Checked In'), 'Button text displays "Checked In"');
+
+        const bestStreak = frameDoc.getElementById('bestStreakVal');
+        assert(bestStreak.textContent === '1 day', 'Best streak displays 1 day');
+
+        const startedDate = frameDoc.getElementById('startedDateVal');
+        assert(startedDate.textContent !== '—', 'Started date is now populated');
+
+        const todayDot = frameDoc.querySelector('.weekly-day-label.is-today').nextElementSibling;
+        assert(todayDot.classList.contains('completed'), 'Today dot has completed class');
+
+        // 5. Test Duplicate Check-In (clicking disabled button)
+        checkInBtn.click();
+        assert(streakCount.textContent === '1', 'Streak count does not increment again today');
+
+        // 6. Test Persistence (Simulate page reload)
+        const app2 = new frameWin.StreakApp();
+        assert(app2.streak.currentStreak === 1, 'Persisted streak count is 1');
+        assert(app2.streak.name === 'Learning C#', 'Persisted streak name is Learning C#');
+        assert(!modal.classList.contains('is-open'), 'Modal does not reopen on reload with existing streak');
+        assert(checkInBtn.disabled, 'Check In button remains disabled after reload');
+
+        // 7. Test Renaming Streak
+        const nameBtn = frameDoc.getElementById('streakNameBtn');
+        nameBtn.click();
+        assert(modal.classList.contains('is-open'), 'Modal opens when edit streak clicked');
+        assert(input.value === 'Learning C#', 'Input prefilled with existing name');
+
+        input.value = 'Cybersecurity Study';
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        assert(streakName.textContent === 'Cybersecurity Study', 'Streak renamed to Cybersecurity Study');
+        assert(streakCount.textContent === '1', 'Streak count preserved after rename');
+        assert(bestStreak.textContent === '1 day', 'Best streak preserved after rename');
+
+        // 8. Test Consecutive Day Check-In Math
+        const sConsecutive = new frameWin.Streak({
+          name: 'Study',
+          currentStreak: 4,
+          bestStreak: 4,
+          startDate: '2026-09-17',
+          lastCheckInDate: '2026-09-20',
+          history: ['2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20']
+        });
+        assert(sConsecutive.getDisplayStreak('2026-09-21') === 4, 'Consecutive streak displays 4 pending check-in');
+        const cRes = sConsecutive.checkIn('2026-09-21');
+        assert(cRes.success && sConsecutive.currentStreak === 5, 'Consecutive check-in increments streak to 5');
+        assert(sConsecutive.bestStreak === 5, 'Consecutive check-in updates best streak to 5');
+
+        // 9. Test Missed Day Logic
+        const sBroken = new frameWin.Streak({
+          name: 'Study',
+          currentStreak: 12,
+          bestStreak: 18,
+          startDate: '2026-09-01',
+          lastCheckInDate: '2026-09-18',
+          history: ['2026-09-18']
+        });
+        // Today is 2026-09-21, last was 2026-09-18 (missed 2 days)
+        assert(sBroken.getDisplayStreak('2026-09-21') === 0, 'Broken streak displays 0 before check-in');
+        const bRes = sBroken.checkIn('2026-09-21');
+        assert(bRes.success && sBroken.currentStreak === 1, 'Broken streak resets current streak to 1');
+        assert(sBroken.bestStreak === 18, 'Historical best streak remains intact at 18');
+
+        const passCount = results.filter(r => r.pass).length;
+        const failCount = results.filter(r => !r.pass).length;
+        document.getElementById('results').innerHTML = `E2E_TOTAL: ${results.length}, PASSED: ${passCount}, FAILED: ${failCount}<br>` +
+          results.map(r => `${r.pass ? 'PASS' : 'FAIL'}: ${r.message}`).join('<br>');
+      } catch (e) {
+        document.getElementById('results').innerHTML = `E2E_ERROR: ${e.toString()}`;
+      }
+    };
+  </script>
+</body>
+</html>
